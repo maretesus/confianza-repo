@@ -1,181 +1,126 @@
-import 'package:flutter/material.dart';
+import '../models/secret.dart';
 
-void main() {
-  runApp(const InstagramDemo());
-}
+/// Servicio para manejar operaciones con secretos
+/// FASE 1: Retorna datos mock para testing sin Firebase
+class SecretService {
+  // Datos mock para desarrollo y testing
+  final List<Secret> _mockSecrets = [
+    Secret(
+      id: '1',
+      userId: 'user_001',
+      videoUrl: 'https://picsum.photos/400/600',
+      title: 'Mi primer secreto',
+      description: 'Siempre tuve miedo de contar esto pero aquí va...',
+      category: 'LOVE',
+      likes: 124,
+      comments: 23,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      isAnonymous: true,
+    ),
+    Secret(
+      id: '2',
+      userId: 'user_002',
+      videoUrl: 'https://picsum.photos/400/601',
+      title: 'Confesión familiar',
+      description: 'Algo que nunca le dije a mi familia',
+      category: 'FAMILY',
+      likes: 89,
+      comments: 45,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      isAnonymous: true,
+    ),
+    Secret(
+      id: '3',
+      userId: 'user_003',
+      videoUrl: 'https://picsum.photos/400/602',
+      title: 'Historia de amistad',
+      description: 'Mi mejor amigo no sabe esto sobre mí',
+      category: 'FRIENDSHIP',
+      likes: 203,
+      comments: 67,
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      isAnonymous: true,
+    ),
+    Secret(
+      id: '4',
+      userId: 'user_004',
+      videoUrl: 'https://picsum.photos/400/603',
+      title: 'Algo muy extraño',
+      description: 'Esto me pasó y nadie me cree',
+      category: 'WEIRD',
+      likes: 456,
+      comments: 189,
+      createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      isAnonymous: true,
+    ),
+    Secret(
+      id: '5',
+      userId: 'user_005',
+      videoUrl: 'https://picsum.photos/400/604',
+      title: 'Confesión hot 🔥',
+      description: null,
+      category: 'HOT',
+      likes: 789,
+      comments: 234,
+      createdAt: DateTime.now().subtract(const Duration(days: 3)),
+      isAnonymous: true,
+    ),
+  ];
 
-class InstagramDemo extends StatelessWidget {
-  const InstagramDemo({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
-    );
+  /// Obtiene todos los secretos
+  Future<List<Secret>> getSecrets() async {
+    // Simula latencia de red
+    await Future.delayed(const Duration(seconds: 1));
+    return List.from(_mockSecrets);
   }
-}
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          "Instagram",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
-        actions: const [
-          Icon(Icons.favorite_border, color: Colors.black),
-          SizedBox(width: 15),
-          Icon(Icons.send, color: Colors.black),
-          SizedBox(width: 15),
-        ],
-      ),
-      body: ListView(
-        children: const [
-          StoriesSection(),
-          Divider(),
-          PostWidget(
-            username: "usuario_1",
-            imageUrl: "https://picsum.photos/500/400",
-          ),
-          PostWidget(
-            username: "flutter_dev",
-            imageUrl: "https://picsum.photos/500/401",
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.video_library), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: ""),
-        ],
-      ),
-    );
+  /// Obtiene un secreto por ID
+  Future<Secret?> getSecretById(String id) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      return _mockSecrets.firstWhere((s) => s.id == id);
+    } catch (e) {
+      return null;
+    }
   }
-}
 
-class StoriesSection extends StatelessWidget {
-  const StoriesSection({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 110,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 10,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.purple, Colors.orange],
-                    ),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(3),
-                    child: CircleAvatar(
-                      backgroundImage: NetworkImage(
-                        "https://picsum.photos/200",
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text("user$index"),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  /// Crea un nuevo secreto
+  Future<void> createSecret(Secret secret) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _mockSecrets.insert(0, secret);
   }
-}
 
-class PostWidget extends StatefulWidget {
-  final String username;
-  final String imageUrl;
+  /// Actualiza un secreto existente
+  Future<void> updateSecret(Secret secret) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    final index = _mockSecrets.indexWhere((s) => s.id == secret.id);
+    if (index != -1) {
+      _mockSecrets[index] = secret;
+    }
+  }
 
-  const PostWidget({
-    super.key,
-    required this.username,
-    required this.imageUrl,
-  });
+  /// Elimina un secreto
+  Future<void> deleteSecret(String id) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _mockSecrets.removeWhere((s) => s.id == id);
+  }
 
-  @override
-  State<PostWidget> createState() => _PostWidgetState();
-}
+  /// Da like a un secreto
+  Future<void> likeSecret(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _mockSecrets.indexWhere((s) => s.id == id);
+    if (index != -1) {
+      _mockSecrets[index] = _mockSecrets[index].copyWith(
+        likes: _mockSecrets[index].likes + 1,
+      );
+    }
+  }
 
-class _PostWidgetState extends State<PostWidget> {
-  bool isLiked = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          leading: const CircleAvatar(
-            backgroundImage: NetworkImage("https://picsum.photos/100"),
-          ),
-          title: Text(widget.username),
-          trailing: const Icon(Icons.more_vert),
-        ),
-        Image.network(widget.imageUrl),
-        Row(
-          children: [
-            IconButton(
-              icon: Icon(
-                isLiked ? Icons.favorite : Icons.favorite_border,
-                color: isLiked ? Colors.red : Colors.black,
-              ),
-              onPressed: () {
-                setState(() {
-                  isLiked = !isLiked;
-                });
-              },
-            ),
-            const IconButton(
-              icon: Icon(Icons.chat_bubble_outline),
-              onPressed: null,
-            ),
-            const IconButton(
-              icon: Icon(Icons.send),
-              onPressed: null,
-            ),
-          ],
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            "Me gusta esto ❤️",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 15),
-      ],
-    );
+  /// Obtiene secretos por categoría
+  Future<List<Secret>> getSecretsByCategory(String category) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return _mockSecrets
+        .where((s) => s.category.toUpperCase() == category.toUpperCase())
+        .toList();
   }
 }
