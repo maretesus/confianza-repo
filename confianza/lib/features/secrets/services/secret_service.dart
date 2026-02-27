@@ -1,126 +1,153 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/secret.dart';
 
-/// Servicio para manejar operaciones con secretos
-/// FASE 1: Retorna datos mock para testing sin Firebase
+/// Servicio para manejar operaciones con secretos en Firestore
 class SecretService {
-  // Datos mock para desarrollo y testing
-  final List<Secret> _mockSecrets = [
-    Secret(
-      id: '1',
-      userId: 'user_001',
-      videoUrl: 'https://picsum.photos/400/600',
-      title: 'Mi primer secreto',
-      description: 'Siempre tuve miedo de contar esto pero aquí va...',
-      category: 'LOVE',
-      likes: 124,
-      comments: 23,
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      isAnonymous: true,
-    ),
-    Secret(
-      id: '2',
-      userId: 'user_002',
-      videoUrl: 'https://picsum.photos/400/601',
-      title: 'Confesión familiar',
-      description: 'Algo que nunca le dije a mi familia',
-      category: 'FAMILY',
-      likes: 89,
-      comments: 45,
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      isAnonymous: true,
-    ),
-    Secret(
-      id: '3',
-      userId: 'user_003',
-      videoUrl: 'https://picsum.photos/400/602',
-      title: 'Historia de amistad',
-      description: 'Mi mejor amigo no sabe esto sobre mí',
-      category: 'FRIENDSHIP',
-      likes: 203,
-      comments: 67,
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      isAnonymous: true,
-    ),
-    Secret(
-      id: '4',
-      userId: 'user_004',
-      videoUrl: 'https://picsum.photos/400/603',
-      title: 'Algo muy extraño',
-      description: 'Esto me pasó y nadie me cree',
-      category: 'WEIRD',
-      likes: 456,
-      comments: 189,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      isAnonymous: true,
-    ),
-    Secret(
-      id: '5',
-      userId: 'user_005',
-      videoUrl: 'https://picsum.photos/400/604',
-      title: 'Confesión hot 🔥',
-      description: null,
-      category: 'HOT',
-      likes: 789,
-      comments: 234,
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      isAnonymous: true,
-    ),
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Obtiene todos los secretos
+  /// Guarda una referencia a la colección de secretos
+  CollectionReference<Map<String, dynamic>> get _secretsCollection =>
+      _firestore.collection('secrets');
+
+  /// Obtiene todos los secretos desde Firestore
+  /// Ordenados por fecha más reciente primero
   Future<List<Secret>> getSecrets() async {
-    // Simula latencia de red
-    await Future.delayed(const Duration(seconds: 1));
-    return List.from(_mockSecrets);
+    try {
+      final snapshot = await _secretsCollection
+          .orderBy('createdAt', descending: true)
+          .limit(50) // Limita a 50 para mejor rendimiento
+          .get();
+
+      return snapshot.docs
+          .map((doc) => Secret.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error obteniendo secretos: $e');
+      return [];
+    }
   }
 
-  /// Obtiene un secreto por ID
+  /// Obtiene un secreto específico por ID
   Future<Secret?> getSecretById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
     try {
-      return _mockSecrets.firstWhere((s) => s.id == id);
+      final doc = await _secretsCollection.doc(id).get();
+      if (!doc.exists) return null;
+
+      return Secret.fromMap(doc.data() as Map<String, dynamic>, id);
     } catch (e) {
+      print('Error obteniendo secreto: $e');
       return null;
     }
   }
 
-  /// Crea un nuevo secreto
-  Future<void> createSecret(Secret secret) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _mockSecrets.insert(0, secret);
+  /// Stream de todos los secretos (para actualización en tiempo real)
+  Stream<List<Secret>> getSecretsStream() {
+    return _secretsCollection
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Secret.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  /// Stream de secretos por categoría
+  Stream<List<Secret>> getSecretsByCategory(String category) {
+    return _secretsCollection
+        .where('category', isEqualTo: category)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Secret.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  /// Crea un nuevo secreto en Firestore
+  Future<String?> createSecret(Secret secret) async {
+    try {
+      // Asegurar que likedByUserIds está inicializado
+      final secretToSave = secret.copyWith(likedByUserIds: []);
+      final docRef = await _secretsCollection.add(secretToSave.toMap());
+      return docRef.id;
+    } catch (e) {
+      print('Error creando secreto: $e');
+      return null;
+    }
   }
 
   /// Actualiza un secreto existente
   Future<void> updateSecret(Secret secret) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final index = _mockSecrets.indexWhere((s) => s.id == secret.id);
-    if (index != -1) {
-      _mockSecrets[index] = secret;
+    try {
+      await _secretsCollection.doc(secret.id).update(secret.toMap());
+    } catch (e) {
+      print('Error actualizando secreto: $e');
     }
   }
 
   /// Elimina un secreto
   Future<void> deleteSecret(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _mockSecrets.removeWhere((s) => s.id == id);
-  }
-
-  /// Da like a un secreto
-  Future<void> likeSecret(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _mockSecrets.indexWhere((s) => s.id == id);
-    if (index != -1) {
-      _mockSecrets[index] = _mockSecrets[index].copyWith(
-        likes: _mockSecrets[index].likes + 1,
-      );
+    try {
+      await _secretsCollection.doc(id).delete();
+    } catch (e) {
+      print('Error eliminando secreto: $e');
     }
   }
 
-  /// Obtiene secretos por categoría
-  Future<List<Secret>> getSecretsByCategory(String category) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _mockSecrets
-        .where((s) => s.category.toUpperCase() == category.toUpperCase())
-        .toList();
+  /// Da like a un secreto para un usuario específico
+  /// Si el usuario ya dio like, no hace nada (idempotente)
+  Future<void> likeSecret(String secretId, String userId) async {
+    try {
+      final doc = await _secretsCollection.doc(secretId).get();
+      if (!doc.exists) return;
+
+      final likedByUserIds = List<String>.from(doc.get('likedByUserIds') as List? ?? []);
+      
+      // Si el usuario ya dio like, no hacer nada (toggle)
+      if (likedByUserIds.contains(userId)) {
+        return;
+      }
+
+      // Agregar usuario a la lista de likes
+      likedByUserIds.add(userId);
+      
+      await _secretsCollection.doc(secretId).update({
+        'likedByUserIds': likedByUserIds,
+        'likes': likedByUserIds.length, // Actualizar contador
+      });
+    } catch (e) {
+      print('Error dando like: $e');
+    }
+  }
+
+  /// Quita el like de un secreto para un usuario específico
+  Future<void> unlikeSecret(String secretId, String userId) async {
+    try {
+      final doc = await _secretsCollection.doc(secretId).get();
+      if (!doc.exists) return;
+
+      final likedByUserIds = List<String>.from(doc.get('likedByUserIds') as List? ?? []);
+      
+      // Remover usuario de la lista de likes
+      likedByUserIds.remove(userId);
+      
+      await _secretsCollection.doc(secretId).update({
+        'likedByUserIds': likedByUserIds,
+        'likes': likedByUserIds.length, // Actualizar contador
+      });
+    } catch (e) {
+      print('Error removiendo like: $e');
+    }
+  }
+
+  /// Obtiene secretos de un usuario específico
+  Stream<List<Secret>> getUserSecrets(String userId) {
+    return _secretsCollection
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Secret.fromMap(doc.data(), doc.id))
+            .toList());
   }
 }

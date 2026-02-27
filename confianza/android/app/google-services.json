@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "310977538437",
+    "project_id": "confident-f42af",
+    "storage_bucket": "confident-f42af.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:310977538437:android:c9825cd1b2746c0f92fcec",
+        "android_client_info": {
+          "package_name": "com.confianza.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJaNJlIetOBbyMWs_9x7GwR6B70wQUej8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

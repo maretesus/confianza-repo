@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+import 'features/auth/providers/anonymous_user_provider.dart';
 
 /// Widget raíz de la aplicación Confident
 /// Configura el router y los temas
-class ConfidentApp extends StatelessWidget {
+class ConfidentApp extends ConsumerWidget {
   const ConfidentApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Inicializar ID anónimo del usuario
+    final anonymousId = ref.watch(anonymousUserIdProvider);
+    
+    // Una vez que se carga el ID anónimo, guardarlo en el provider sincrónico
+    anonymousId.whenData((id) {
+      ref.read(anonymousUserIdSyncProvider.notifier).state = id;
+    });
+
     return MaterialApp.router(
       // Configuración básica
       title: AppConstants.appName,

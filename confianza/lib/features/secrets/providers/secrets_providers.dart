@@ -1,36 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/secret.dart';
 import '../services/secret_service.dart';
+import '../../auth/providers/auth_providers.dart';
 
 // ==================== PROVIDERS DE SERVICIOS ====================
 
 /// Provider del servicio de secretos
-/// Este provider es inmutable y siempre retorna la misma instancia
 final secretServiceProvider = Provider<SecretService>((ref) {
   return SecretService();
 });
 
-// ==================== PROVIDERS DE DATOS ====================
+// ==================== PROVIDERS DE DATOS (STREAMS EN TIEMPO REAL) ====================
 
-/// Provider que obtiene todos los secretos
-/// Usa FutureProvider para manejar estados async automáticamente
-/// AutoDispose: se limpia automáticamente cuando no se usa
-final secretsProvider = FutureProvider.autoDispose<List<Secret>>((ref) async {
+/// Provider Stream que obtiene todos los secretos en tiempo real desde Firestore
+final secretsProvider = StreamProvider.autoDispose<List<Secret>>((ref) {
   final secretService = ref.watch(secretServiceProvider);
-  return secretService.getSecrets();
+  return secretService.getSecretsStream();
 });
 
-/// Provider que obtiene secretos por categoría
-/// Recibe la categoría como parámetro
-final secretsByCategoryProvider = FutureProvider.autoDispose.family<List<Secret>, String>(
-  (ref, category) async {
+/// Provider Stream que obtiene secretos por categoría
+final secretsByCategoryProvider = StreamProvider.autoDispose.family<List<Secret>, String>(
+  (ref, category) {
     final secretService = ref.watch(secretServiceProvider);
     return secretService.getSecretsByCategory(category);
   },
 );
 
-/// Provider que obtiene un secreto específico por ID
-/// Útil para la pantalla de detalle
+/// Provider que obtiene un secreto específico por ID (Future)
 final secretByIdProvider = FutureProvider.autoDispose.family<Secret?, String>(
   (ref, secretId) async {
     final secretService = ref.watch(secretServiceProvider);
@@ -41,59 +37,77 @@ final secretByIdProvider = FutureProvider.autoDispose.family<Secret?, String>(
 // ==================== PROVIDERS DE ESTADO ====================
 
 /// Provider para filtro de categoría actual
-/// StateProvider permite cambiar el valor desde la UI
 final selectedCategoryProvider = StateProvider<String?>((ref) {
   return null; // null = todas las categorías
 });
 
 /// Provider que retorna secretos filtrados según categoría seleccionada
-/// Este es un provider "computed" - se actualiza automáticamente
-final filteredSecretsProvider = FutureProvider.autoDispose<List<Secret>>((ref) async {
+/// Usa streams para actualizaciones en tiempo real
+final filteredSecretsProvider = StreamProvider.autoDispose<List<Secret>>((ref) {
   final selectedCategory = ref.watch(selectedCategoryProvider);
+  final secretService = ref.watch(secretServiceProvider);
   
   if (selectedCategory == null) {
     // Si no hay categoría seleccionada, mostrar todos
-    return ref.watch(secretsProvider.future);
+    return secretService.getSecretsStream();
   } else {
     // Si hay categoría, filtrar
-    return ref.watch(secretsByCategoryProvider(selectedCategory).future);
+    return secretService.getSecretsByCategory(selectedCategory);
   }
 });
 
 // ==================== PROVIDERS DE ACCIONES ====================
 
 /// Provider para dar like a un secreto
-/// No retorna datos, solo ejecuta la acción
-final likeSecretProvider = Provider.autoDispose.family<Future<void>, String>(
-  (ref, secretId) async {
+/// Parámetro: (secretId, userId)
+final likeSecretProvider = FutureProvider.autoDispose.family<void, (String, String)>(
+  (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
-    await secretService.likeSecret(secretId);
-    
-    // Invalida el provider de secretos para que se recarguen
-    ref.invalidate(secretsProvider);
-    ref.invalidate(secretByIdProvider(secretId));
+    await secretService.likeSecret(params.$1, params.$2);
+    // Los streams se actualizan automáticamente en Firestore
+  },
+);
+
+/// Provider para quitar like a un secreto
+/// Parámetro: (secretId, userId)
+final unlikeSecretProvider = FutureProvider.autoDispose.family<void, (String, String)>(
+  (ref, params) async {
+    final secretService = ref.read(secretServiceProvider);
+    await secretService.unlikeSecret(params.$1, params.$2);
+    // Los streams se actualizan automáticamente en Firestore
   },
 );
 
 /// Provider para crear un nuevo secreto
-final createSecretProvider = Provider.autoDispose.family<Future<void>, Secret>(
+final createSecretProvider = FutureProvider.autoDispose.family<String?, Secret>(
   (ref, secret) async {
     final secretService = ref.read(secretServiceProvider);
-    await secretService.createSecret(secret);
-    
-    // Invalida el provider de secretos para que se recarguen
-    ref.invalidate(secretsProvider);
+    final newSecretId = await secretService.createSecret(secret);
+    return newSecretId;
+  },
+);
+
+/// Provider para actualizar un secreto existente
+final updateSecretProvider = FutureProvider.autoDispose.family<void, Secret>(
+  (ref, secret) async {
+    final secretService = ref.read(secretServiceProvider);
+    await secretService.updateSecret(secret);
   },
 );
 
 /// Provider para eliminar un secreto
-final deleteSecretProvider = Provider.autoDispose.family<Future<void>, String>(
+final deleteSecretProvider = FutureProvider.autoDispose.family<void, String>(
   (ref, secretId) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.deleteSecret(secretId);
-    
-    // Invalida el provider de secretos para que se recarguen
-    ref.invalidate(secretsProvider);
+  },
+);
+
+/// Provider para obtener secretos del usuario actual
+final userSecretsProvider = StreamProvider.autoDispose.family<List<Secret>, String>(
+  (ref, userId) {
+    final secretService = ref.watch(secretServiceProvider);
+    return secretService.getUserSecrets(userId);
   },
 );
 
@@ -112,13 +126,15 @@ final searchQueryProvider = StateProvider<String>((ref) {
 /// Provider que filtra secretos por búsqueda
 final searchedSecretsProvider = FutureProvider.autoDispose<List<Secret>>((ref) async {
   final query = ref.watch(searchQueryProvider).toLowerCase();
-  final secrets = await ref.watch(filteredSecretsProvider.future);
+  
+  // Esperar a que filteredSecretsProvider devuelva datos
+  final secretsAsync = await ref.watch(filteredSecretsProvider.future);
   
   if (query.isEmpty) {
-    return secrets;
+    return secretsAsync;
   }
   
-  return secrets.where((secret) {
+  return secretsAsync.where((secret) {
     return secret.title.toLowerCase().contains(query) ||
            (secret.description?.toLowerCase().contains(query) ?? false);
   }).toList();

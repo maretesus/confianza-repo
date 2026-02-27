@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../providers/secrets_providers.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../auth/providers/anonymous_user_provider.dart';
 import '../widgets/secret_card.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
@@ -45,18 +48,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget build(BuildContext context) {
     final secretsAsync = ref.watch(secretsProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
+    final currentUserAsync = ref.watch(currentUserProvider);
+    final anonymousIdAsync = ref.watch(anonymousUserIdProvider);
 
     return Scaffold(
       appBar: _buildAppBar(context),
-      body: _buildBody(secretsAsync, selectedCategory),
+      body: _buildBody(secretsAsync, selectedCategory, currentUserAsync, anonymousIdAsync),
       floatingActionButton: _buildFAB(context),
     );
   }
 
   /// Construye el AppBar con búsqueda y filtros
   PreferredSizeWidget _buildAppBar(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return AppBar(
       title: Image.asset(
   'assets/images/logo.png',
@@ -78,6 +81,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           tooltip: 'Filtrar por categoría',
           onPressed: () => _showFilterBottomSheet(context),
         ),
+
+        // Botón Mis Secretos
+        IconButton(
+          icon: const Icon(Icons.my_library_books),
+          tooltip: 'Mis secretos',
+          onPressed: () => context.push('/my-secrets'),
+        ),
       ],
     );
   }
@@ -86,6 +96,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget _buildBody(
     AsyncValue<List> secretsAsync,
     String? selectedCategory,
+    AsyncValue<dynamic> currentUserAsync,
+    AsyncValue<String> anonymousIdAsync,
   ) {
     return secretsAsync.when(
       // Estado de carga
@@ -115,14 +127,31 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 );
         }
 
+        // Obtener el ID del usuario actual
+        String? currentUserId = currentUserAsync.when(
+          data: (user) => user?.uid,
+          loading: () => null,
+          error: (_, __) => null,
+        );
+
+        // Obtener ID anónimo (puede ser null si no se ha cargado aún)
+        String? anonymousId = anonymousIdAsync.when(
+          data: (id) => id,
+          loading: () => null,
+          error: (_, __) => null,
+        );
+
+        // Usar ID del usuario autenticado, o el ID anónimo, o null
+        final userId = currentUserId ?? anonymousId;
+
         // Mostrar lista de secretos
-        return _buildSecretsList(secrets);
+        return _buildSecretsList(secrets, userId);
       },
     );
   }
 
   /// Construye la lista de secretos con pull-to-refresh
-  Widget _buildSecretsList(List secrets) {
+  Widget _buildSecretsList(List secrets, String? currentUserId) {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       child: ListView.builder(
@@ -134,10 +163,14 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         itemCount: secrets.length,
         itemBuilder: (context, index) {
           final secret = secrets[index];
+          // Determinar si el usuario actual ha dado like a este secreto
+          final isLiked = currentUserId != null && secret.likedByUserIds.contains(currentUserId);
+          
           return SecretCard(
             secret: secret,
+            isLiked: isLiked,
             onTap: () => _handleSecretTap(secret.id),
-            onLike: () => _handleLike(secret.id),
+            onLike: () => _handleLike(secret.id, currentUserId),
             onComment: () => _handleComment(secret.id),
           );
         },
@@ -168,10 +201,28 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     _showSnackBar('Ver secreto: $secretId');
   }
 
-  /// Maneja dar like
-  void _handleLike(String secretId) {
-    _showSnackBar('Like agregado');
-    // TODO: Implementar like real cuando esté Firebase
+  /// Maneja dar like o quitar like
+  void _handleLike(String secretId, String? userId) {
+    if (userId == null) {
+      _showSnackBar('No se pudo obtener tu ID');
+      return;
+    }
+
+    // Ver el secreto actual para determinar si ya ha dado like
+    final secretFuture = ref.read(secretByIdProvider(secretId).future);
+    secretFuture.then((secret) {
+      if (secret != null) {
+        if (secret.likedByUserIds.contains(userId)) {
+          // Ya dio like, quitar like
+          ref.read(unlikeSecretProvider((secretId, userId)));
+          _showSnackBar('Like removido');
+        } else {
+          // No ha dado like, dar like
+          ref.read(likeSecretProvider((secretId, userId)));
+          _showSnackBar('Like agregado');
+        }
+      }
+    });
   }
 
   /// Maneja comentar
@@ -182,8 +233,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   /// Maneja crear nuevo secreto
   void _handleCreateSecret() {
-    // TODO: Navegar a pantalla de grabación
-    _showSnackBar('Próximamente: Grabar secreto');
+    // Navega a la pantalla de crear secreto usando go_router
+    context.push('/create-secret');
   }
 
   /// Muestra BottomSheet de búsqueda

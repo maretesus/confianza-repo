@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../features/secrets/screens/feed_screen.dart';
+import '../features/secrets/screens/create_secret_screen.dart';
+import '../features/secrets/screens/my_secrets_screen.dart';
 
 /// Configuración de rutas de la aplicación usando go_router
 final appRouter = GoRouter(
@@ -10,6 +12,16 @@ final appRouter = GoRouter(
       path: '/',
       name: 'feed',
       builder: (context, state) => const FeedScreen(),
+    ),
+    GoRoute(
+      path: '/create-secret',
+      name: 'create-secret',
+      builder: (context, state) => const CreateSecretScreen(),
+    ),
+    GoRoute(
+      path: '/my-secrets',
+      name: 'my-secrets',
+      builder: (context, state) => const MySecretsScreen(),
     ),
     // Rutas futuras:
     // GoRoute(
