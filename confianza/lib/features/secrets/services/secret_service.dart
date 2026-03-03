@@ -15,7 +15,7 @@ class SecretService {
     try {
       final snapshot = await _secretsCollection
           .orderBy('createdAt', descending: true)
-          .limit(50) // Limita a 50 para mejor rendimiento
+          .limit(100) // Limita a 100 para mejor rendimiento
           .get();
 
       return snapshot.docs
@@ -44,19 +44,11 @@ class SecretService {
   Stream<List<Secret>> getSecretsStream() {
     return _secretsCollection
         .orderBy('createdAt', descending: true)
-        .limit(50)
+        .limit(100)
         .snapshots()
-        .map((snapshot) {
-          print('DEBUG: Stream emitió ${snapshot.docs.length} documentos');
-          final secrets = snapshot.docs
-              .map((doc) {
-                print('DEBUG: Documento ${doc.id}: ${doc.data()}');
-                return Secret.fromMap(doc.data(), doc.id);
-              })
-              .toList();
-          print('DEBUG: getSecretsStream retornando ${secrets.length} secretos');
-          return secrets;
-        });
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Secret.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
   /// Stream de secretos por categoría
@@ -64,7 +56,7 @@ class SecretService {
     return _secretsCollection
         .where('category', isEqualTo: category)
         .orderBy('createdAt', descending: true)
-        .limit(50)
+        .limit(100)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => Secret.fromMap(doc.data(), doc.id))
@@ -76,17 +68,10 @@ class SecretService {
     try {
       // Asegurar que likedByUserIds está inicializado
       final secretToSave = secret.copyWith(likedByUserIds: []);
-      print('DEBUG: Guardando secreto con createdAt: ${secretToSave.createdAt}');
-      
-      final secretMap = secretToSave.toMap();
-      print('DEBUG: secretMap a guardar: $secretMap');
-      print('DEBUG: createdAt type en secretMap: ${secretMap['createdAt'].runtimeType}');
-      
-      final docRef = await _secretsCollection.add(secretMap);
-      print('DEBUG: Secreto guardado con ID: ${docRef.id}');
+      final docRef = await _secretsCollection.add(secretToSave.toMap());
       return docRef.id;
     } catch (e) {
-      print('ERROR creando secreto: $e');
+      print('Error creando secreto: $e');
       return null;
     }
   }
