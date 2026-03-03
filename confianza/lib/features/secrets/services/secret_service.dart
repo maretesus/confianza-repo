@@ -46,9 +46,17 @@ class SecretService {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Secret.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          print('DEBUG: Stream emitió ${snapshot.docs.length} documentos');
+          final secrets = snapshot.docs
+              .map((doc) {
+                print('DEBUG: Documento ${doc.id}: ${doc.data()}');
+                return Secret.fromMap(doc.data(), doc.id);
+              })
+              .toList();
+          print('DEBUG: getSecretsStream retornando ${secrets.length} secretos');
+          return secrets;
+        });
   }
 
   /// Stream de secretos por categoría
@@ -68,10 +76,17 @@ class SecretService {
     try {
       // Asegurar que likedByUserIds está inicializado
       final secretToSave = secret.copyWith(likedByUserIds: []);
-      final docRef = await _secretsCollection.add(secretToSave.toMap());
+      print('DEBUG: Guardando secreto con createdAt: ${secretToSave.createdAt}');
+      
+      final secretMap = secretToSave.toMap();
+      print('DEBUG: secretMap a guardar: $secretMap');
+      print('DEBUG: createdAt type en secretMap: ${secretMap['createdAt'].runtimeType}');
+      
+      final docRef = await _secretsCollection.add(secretMap);
+      print('DEBUG: Secreto guardado con ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('Error creando secreto: $e');
+      print('ERROR creando secreto: $e');
       return null;
     }
   }
