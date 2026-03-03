@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:video_player/video_player.dart';
 import '../models/secret.dart';
 import '../models/comment.dart';
 import '../providers/secrets_providers.dart';
@@ -7,7 +8,7 @@ import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/anonymous_user_provider.dart';
 
 /// Pantalla que muestra el detalle de un secreto
-class SecretDetailScreen extends ConsumerWidget {
+class SecretDetailScreen extends ConsumerStatefulWidget {
   final String secretId;
 
   const SecretDetailScreen({
@@ -16,9 +17,40 @@ class SecretDetailScreen extends ConsumerWidget {
   });
 
   @override
+  ConsumerState<SecretDetailScreen> createState() => _SecretDetailScreenState();
+}
+
+class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
+  VideoPlayerController? _videoController;
+  
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  void _initializeVideo(String videoUrl) {
+    // Si la URL es una imagen, no inicializar video player
+    if (videoUrl.contains('picsum.photos') || 
+        videoUrl.endsWith('.jpg') || 
+        videoUrl.endsWith('.png')) {
+      return;
+    }
+    
+    if (_videoController == null) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl))
+        ..initialize().then((_) {
+          setState(() {});
+        }).catchError((error) {
+          print('Error inicializando video: $error');
+        });
+    }
+  }
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Obtener el secreto específico
-    final secretAsync = ref.watch(secretByIdProvider(secretId));
+    final secretAsync = ref.watch(secretByIdProvider(widget.secretId));
     final currentUserAsync = ref.watch(currentUserProvider);
     final anonymousIdAsync = ref.watch(anonymousUserIdProvider);
 
@@ -35,6 +67,9 @@ class SecretDetailScreen extends ConsumerWidget {
               child: Text('Secreto no encontrado'),
             );
           }
+
+          // Inicializar video si es necesario
+          _initializeVideo(secret.videoUrl);
 
           final currentUser = currentUserAsync.maybeWhen(
             data: (user) => user,
@@ -60,20 +95,7 @@ class SecretDetailScreen extends ConsumerWidget {
                   width: double.infinity,
                   height: 300,
                   color: Colors.grey[300],
-                  child: Image.network(
-                    secret.videoUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child;
-                      }
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.broken_image),
-                  ),
+                  child: _buildMediaWidget(secret.videoUrl),
                 ),
 
                 // Contenido del secreto
@@ -278,6 +300,67 @@ class SecretDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildMediaWidget(String url) {
+    // Detectar si es un video
+    final isVideo = url.contains('.mp4') ||
+        url.contains('.mov') ||
+        url.contains('.avi') ||
+        url.contains('videos/') ||
+        url.contains('firebase');
+
+    if (isVideo && _videoController != null && _videoController!.value.isInitialized) {
+      // Mostrar video player
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          VideoPlayer(_videoController!),
+          
+          // Botón play/pausa superpuesto
+          FloatingActionButton(
+            mini: true,
+            backgroundColor: Colors.black.withOpacity(0.5),
+            onPressed: () {
+              setState(() {
+                if (_videoController!.value.isPlaying) {
+                  _videoController!.pause();
+                } else {
+                  _videoController!.play();
+                }
+              });
+            },
+            child: Icon(
+              _videoController!.value.isPlaying
+                  ? Icons.pause
+                  : Icons.play_arrow,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      );
+    } else if (isVideo) {
+      // Video inicializándose o error
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    } else {
+      // Mostrar como imagen
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            return child;
+          }
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image),
+      );
+    }
   }
 
   String _formatDate(DateTime date) {
