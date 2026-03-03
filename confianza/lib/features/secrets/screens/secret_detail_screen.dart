@@ -342,8 +342,9 @@ class SecretDetailScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: Colors.grey[900],
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[800]!),
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -355,16 +356,17 @@ class SecretDetailScreen extends ConsumerWidget {
               children: [
                 Text(
                   comment.isAnonymous ? 'Anónimo' : comment.userId,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
+                    color: Colors.grey[300],
                   ),
                 ),
                 Text(
                   _formatDate(comment.createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[600],
+                    color: Colors.grey[500],
                   ),
                 ),
               ],
@@ -373,7 +375,10 @@ class SecretDetailScreen extends ConsumerWidget {
             // Texto del comentario
             Text(
               comment.text,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
