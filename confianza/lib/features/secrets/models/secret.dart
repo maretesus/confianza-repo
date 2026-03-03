@@ -73,6 +73,27 @@ class Secret {
 
   /// Crea un Secret desde un Map (desde Firestore)
   factory Secret.fromMap(Map<String, dynamic> map, String id) {
+    // Procesar createdAt: puede ser Timestamp o String
+    DateTime createdAt = DateTime.now();
+    final createdAtValue = map['createdAt'];
+    
+    if (createdAtValue is String) {
+      try {
+        createdAt = DateTime.parse(createdAtValue);
+      } catch (e) {
+        print('Error al parsear fecha string: $e');
+        createdAt = DateTime.now();
+      }
+    } else if (createdAtValue != null) {
+      try {
+        // Si es Timestamp de Firestore, usar toDate()
+        createdAt = (createdAtValue as dynamic).toDate();
+      } catch (e) {
+        print('Error al procesar Timestamp: $e');
+        createdAt = DateTime.now();
+      }
+    }
+
     return Secret(
       id: id,
       userId: map['userId'] as String?,
@@ -82,7 +103,7 @@ class Secret {
       category: map['category'] as String,
       likes: map['likes'] as int? ?? 0,
       comments: map['comments'] as int? ?? 0,
-      createdAt: (map['createdAt'] as dynamic).toDate(),
+      createdAt: createdAt,
       isAnonymous: map['isAnonymous'] as bool? ?? true,
       likedByUserIds: List<String>.from(map['likedByUserIds'] as List? ?? []),
     );
