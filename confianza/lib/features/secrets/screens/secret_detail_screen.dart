@@ -295,14 +295,20 @@ class SecretDetailScreen extends ConsumerWidget {
     return ref.watch(commentsProvider(secretId)).when(
       data: (comments) {
         if (comments.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Center(
-              child: Text(
-                'Aún no hay comentarios',
-                style: TextStyle(color: Colors.grey[600]),
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: Text(
+                    'Aún no hay comentarios',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              _buildAddCommentForm(secretId, ref, context),
+            ],
           );
         }
 
