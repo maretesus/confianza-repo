@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/secret.dart';
+import '../models/comment.dart';
 import '../providers/secrets_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/anonymous_user_provider.dart';
@@ -245,6 +246,17 @@ class SecretDetailScreen extends ConsumerWidget {
                           color: Colors.grey[600],
                         ),
                       ),
+                      const SizedBox(height: 32),
+
+                      // SECCIÓN DE COMENTARIOS
+                      Text(
+                        'Comentarios',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Lista de comentarios
+                      _buildCommentsList(secretId),
                     ],
                   ),
                 ),
@@ -277,5 +289,226 @@ class SecretDetailScreen extends ConsumerWidget {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  Widget _buildCommentsList(String secretId) {
+    return ref.watch(commentsProvider(secretId)).when(
+      data: (comments) {
+        if (comments.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: Text(
+                'Aún no hay comentarios',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: comments.length,
+              itemBuilder: (context, index) {
+                final comment = comments[index];
+                return _buildCommentCard(comment);
+              },
+            ),
+            const SizedBox(height: 24),
+            _buildAddCommentForm(secretId),
+          ],
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stack) => Center(
+        child: Text('Error: $error'),
+      ),
+    );
+  }
+
+  Widget _buildCommentCard(Comment comment) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Usuario y fecha
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  comment.isAnonymous ? 'Anónimo' : comment.userId,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  _formatDate(comment.createdAt),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Texto del comentario
+            Text(
+              comment.text,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddCommentForm(String secretId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          'Agregar comentario',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        _AddCommentWidget(secretId: secretId),
+      ],
+    );
+  }
+}
+
+/// Widget separado para el formulario de comentarios
+class _AddCommentWidget extends ConsumerStatefulWidget {
+  final String secretId;
+
+  const _AddCommentWidget({required this.secretId});
+
+  @override
+  ConsumerState<_AddCommentWidget> createState() => _AddCommentWidgetState();
+}
+
+class _AddCommentWidgetState extends ConsumerState<_AddCommentWidget> {
+  final _commentController = TextEditingController();
+  bool _isAnonymous = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitComment() async {
+    if (_commentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El comentario no puede estar vacío')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final currentUserAsync = ref.read(currentUserProvider);
+      final currentUser = currentUserAsync.maybeWhen(
+        data: (user) => user,
+        orElse: () => null,
+      );
+
+      final comment = Comment(
+        id: '', // Firestore generará el ID
+        secretId: widget.secretId,
+        userId: currentUser?.uid ?? 'anonymous',
+        text: _commentController.text,
+        createdAt: DateTime.now(),
+        isAnonymous: _isAnonymous,
+      );
+
+      await ref.read(
+        addCommentProvider((widget.secretId, comment)).future,
+      );
+
+      _commentController.clear();
+      setState(() => _isAnonymous = true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comentario agregado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Input de comentario
+        TextField(
+          controller: _commentController,
+          minLines: 2,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Escribe tu comentario...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Checkbox de anónimo y botón
+        Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _isAnonymous,
+                    onChanged: (value) {
+                      setState(() => _isAnonymous = value ?? true);
+                    },
+                  ),
+                  const Text('Anónimo'),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isLoading ? null : _submitComment,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send),
+              label: const Text('Enviar'),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

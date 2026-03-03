@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/secret.dart';
+import '../models/comment.dart';
 import '../services/secret_service.dart';
 import '../../auth/providers/auth_providers.dart';
 
@@ -144,3 +145,24 @@ final searchedSecretsProvider = FutureProvider.autoDispose<List<Secret>>((ref) a
            (secret.description?.toLowerCase().contains(query) ?? false);
   }).toList();
 });
+
+// ==================== PROVIDERS DE COMENTARIOS ====================
+
+/// Provider Stream que obtiene comentarios de un secreto específico
+final commentsProvider = StreamProvider.autoDispose.family<List<Comment>, String>(
+  (ref, secretId) {
+    final secretService = ref.watch(secretServiceProvider);
+    return secretService.getCommentsStream(secretId);
+  },
+);
+
+/// Provider para agregar un comentario a un secreto
+final addCommentProvider = FutureProvider.autoDispose.family<void, (String, Comment)>(
+  (ref, params) async {
+    final secretService = ref.read(secretServiceProvider);
+    await secretService.addComment(params.$1, params.$2);
+    // Refrescar comentarios del secreto
+    ref.refresh(commentsProvider(params.$1));
+  },
+);
+

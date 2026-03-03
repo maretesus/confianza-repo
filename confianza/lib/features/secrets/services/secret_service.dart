@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/secret.dart';
+import '../models/comment.dart';
 
 /// Servicio para manejar operaciones con secretos en Firestore
 class SecretService {
@@ -150,4 +151,41 @@ class SecretService {
             .map((doc) => Secret.fromMap(doc.data(), doc.id))
             .toList());
   }
+
+  // ===================== MÉTODOS PARA COMENTARIOS =====================
+
+  /// Obtiene el stream de comentarios para un secreto específico
+  Stream<List<Comment>> getCommentsStream(String secretId) {
+    return _secretsCollection
+        .doc(secretId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Comment.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  /// Agrega un nuevo comentario a un secreto
+  Future<void> addComment(String secretId, Comment comment) async {
+    try {
+      // Agregar el comentario a la subcolección
+      await _secretsCollection
+          .doc(secretId)
+          .collection('comments')
+          .add(comment.toMap());
+
+      // Incrementar el contador de comentarios en el secreto
+      final secretDoc = await _secretsCollection.doc(secretId).get();
+      if (secretDoc.exists) {
+        final currentComments = secretDoc.get('comments') as int? ?? 0;
+        await _secretsCollection.doc(secretId).update({
+          'comments': currentComments + 1,
+        });
+      }
+    } catch (e) {
+      print('Error agregando comentario: $e');
+    }
+  }
 }
+
