@@ -83,6 +83,11 @@ final createSecretProvider = FutureProvider.autoDispose.family<String?, Secret>(
   (ref, secret) async {
     final secretService = ref.read(secretServiceProvider);
     final newSecretId = await secretService.createSecret(secret);
+    // Invalidar los providers de secretos para que se actualicen
+    if (newSecretId != null) {
+      ref.invalidate(secretsProvider);
+      ref.invalidate(filteredSecretsProvider);
+    }
     return newSecretId;
   },
 );
