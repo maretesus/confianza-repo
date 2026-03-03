@@ -41,9 +41,15 @@ class SecretDetailScreen extends ConsumerWidget {
             orElse: () => null,
           );
 
-          final currentUserId = currentUser?.uid;
-          final isLiked = currentUserId != null &&
-              secret.likedByUserIds.contains(currentUserId);
+          final anonymousId = anonymousIdAsync.maybeWhen(
+            data: (id) => id,
+            orElse: () => null,
+          );
+
+          // Usar ID del usuario autenticado o ID anónimo
+          final userId = currentUser?.uid ?? anonymousId;
+          final isLiked = userId != null &&
+              secret.likedByUserIds.contains(userId);
 
           return SingleChildScrollView(
             child: Column(
@@ -153,17 +159,17 @@ class SecretDetailScreen extends ConsumerWidget {
                           Expanded(
                             child: GestureDetector(
                               onTap: () {
-                                if (currentUserId != null) {
+                                if (userId != null) {
                                   if (isLiked) {
                                     ref.read(
                                       unlikeSecretProvider(
-                                        (secretId, currentUserId),
+                                        (secretId, userId),
                                       ).future,
                                     );
                                   } else {
                                     ref.read(
                                       likeSecretProvider(
-                                        (secretId, currentUserId),
+                                        (secretId, userId),
                                       ).future,
                                     );
                                   }
