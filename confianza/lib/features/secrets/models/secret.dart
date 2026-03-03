@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modelo de un secreto en video
 class Secret {
   final String id;
@@ -65,7 +67,7 @@ class Secret {
       'category': category,
       'likes': likes,
       'comments': comments,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'isAnonymous': isAnonymous,
       'likedByUserIds': likedByUserIds,
     };
