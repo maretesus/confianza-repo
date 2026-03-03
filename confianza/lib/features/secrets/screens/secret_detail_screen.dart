@@ -256,7 +256,7 @@ class SecretDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
 
                       // Lista de comentarios
-                      _buildCommentsList(secretId),
+                      _buildCommentsList(secretId, ref, context),
                     ],
                   ),
                 ),
@@ -291,7 +291,7 @@ class SecretDetailScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildCommentsList(String secretId) {
+  Widget _buildCommentsList(String secretId, WidgetRef ref, BuildContext context) {
     return ref.watch(commentsProvider(secretId)).when(
       data: (comments) {
         if (comments.isEmpty) {
@@ -314,11 +314,11 @@ class SecretDetailScreen extends ConsumerWidget {
               itemCount: comments.length,
               itemBuilder: (context, index) {
                 final comment = comments[index];
-                return _buildCommentCard(comment);
+                return _buildCommentCard(comment, context);
               },
             ),
             const SizedBox(height: 24),
-            _buildAddCommentForm(secretId),
+            _buildAddCommentForm(secretId, ref, context),
           ],
         );
       },
@@ -331,7 +331,7 @@ class SecretDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCommentCard(Comment comment) {
+  Widget _buildCommentCard(Comment comment, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -375,7 +375,7 @@ class SecretDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAddCommentForm(String secretId) {
+  Widget _buildAddCommentForm(String secretId, WidgetRef ref, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
