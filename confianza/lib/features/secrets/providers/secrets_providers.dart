@@ -65,7 +65,10 @@ final likeSecretProvider = FutureProvider.autoDispose.family<void, (String, Stri
   (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.likeSecret(params.$1, params.$2);
-    // Los streams se actualizan automáticamente en Firestore
+    // Refrescar el secreto para que se actualice el UI
+    ref.refresh(secretByIdProvider(params.$1));
+    // Refrescar todos los secretos en el feed
+    ref.refresh(secretsProvider);
   },
 );
 
@@ -75,7 +78,10 @@ final unlikeSecretProvider = FutureProvider.autoDispose.family<void, (String, St
   (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.unlikeSecret(params.$1, params.$2);
-    // Los streams se actualizan automáticamente en Firestore
+    // Refrescar el secreto para que se actualice el UI
+    ref.refresh(secretByIdProvider(params.$1));
+    // Refrescar todos los secretos en el feed
+    ref.refresh(secretsProvider);
   },
 );
 
