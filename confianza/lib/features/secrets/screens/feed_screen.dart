@@ -197,8 +197,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   /// Maneja tap en un secreto
   void _handleSecretTap(String secretId) {
-    // TODO: Navegar a pantalla de detalle
-    _showSnackBar('Ver secreto: $secretId');
+    context.push('/secret/$secretId');
   }
 
   /// Maneja dar like o quitar like

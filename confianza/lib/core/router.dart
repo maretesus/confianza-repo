@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../features/secrets/screens/feed_screen.dart';
 import '../features/secrets/screens/create_secret_screen.dart';
 import '../features/secrets/screens/my_secrets_screen.dart';
+import '../features/secrets/screens/secret_detail_screen.dart';
 
 /// Configuración de rutas de la aplicación usando go_router
 final appRouter = GoRouter(
@@ -23,20 +24,14 @@ final appRouter = GoRouter(
       name: 'my-secrets',
       builder: (context, state) => const MySecretsScreen(),
     ),
-    // Rutas futuras:
-    // GoRoute(
-    //   path: '/record',
-    //   name: 'record',
-    //   builder: (context, state) => const RecordScreen(),
-    // ),
-    // GoRoute(
-    //   path: '/secret/:id',
-    //   name: 'secret-detail',
-    //   builder: (context, state) {
-    //     final id = state.pathParameters['id']!;
-    //     return SecretDetailScreen(secretId: id);
-    //   },
-    // ),
+    GoRoute(
+      path: '/secret/:id',
+      name: 'secret-detail',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return SecretDetailScreen(secretId: id);
+      },
+    ),
   ],
   errorBuilder: (context, state) => Scaffold(
     body: Center(
