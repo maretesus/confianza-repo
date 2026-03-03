@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/secret.dart';
 import '../providers/secrets_providers.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -54,13 +53,18 @@ class SecretDetailScreen extends ConsumerWidget {
                   width: double.infinity,
                   height: 300,
                   color: Colors.grey[300],
-                  child: CachedNetworkImage(
-                    imageUrl: secret.videoUrl,
+                  child: Image.network(
+                    secret.videoUrl,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    errorWidget: (context, url, error) =>
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) {
+                        return child;
+                      }
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
                         const Icon(Icons.broken_image),
                   ),
                 ),
