@@ -28,9 +28,19 @@ class MediaService {
   /// Sube un video a Firebase Storage y retorna la URL
   Future<String?> uploadVideo(File videoFile) async {
     try {
+      print('Starting video upload: ${videoFile.path}');
+      print('File size: ${getVideoSizeMB(videoFile).toStringAsFixed(2)}MB');
+      
+      // Validar que el archivo existe
+      if (!videoFile.existsSync()) {
+        print('Video file does not exist: ${videoFile.path}');
+        return null;
+      }
+      
       // Generar un ID único para el archivo
       final String fileId = const Uuid().v4();
       final String fileName = 'videos/$fileId.mp4';
+      print('Uploading to Firebase Storage: $fileName');
       
       // Subir archivo
       final Reference ref = _storage.ref().child(fileName);
@@ -41,15 +51,24 @@ class MediaService {
         ),
       );
       
+      // Escuchar el progreso
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        print('Upload progress: ${progress.toStringAsFixed(2)}%');
+      });
+      
       // Esperar a que se complete la subida
       final TaskSnapshot snapshot = await uploadTask;
+      print('Upload completed. Snapshot state: ${snapshot.state}');
       
       // Obtener la URL de descarga
       final String downloadUrl = await snapshot.ref.getDownloadURL();
+      print('Video uploaded successfully: $downloadUrl');
       
       return downloadUrl;
     } catch (e) {
       print('Error subiendo video: $e');
+      print('Stack trace: $e');
       return null;
     }
   }

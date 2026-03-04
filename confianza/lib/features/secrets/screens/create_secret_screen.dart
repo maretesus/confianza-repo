@@ -81,32 +81,39 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
       String finalVideoUrl = _videoUrl ?? _videoUrlController.text;
       
       if (_selectedVideoFile != null && finalVideoUrl.isEmpty) {
+        print('Selected video file found, uploading...');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Subiendo video...'),
+            content: Text('Subiendo video... esto puede tomar algunos segundos'),
             duration: Duration(seconds: 30),
           ),
         );
         
-        finalVideoUrl = await _mediaService.uploadVideo(_selectedVideoFile!) ?? '';
+        final uploadedUrl = await _mediaService.uploadVideo(_selectedVideoFile!);
+        print('Upload result: $uploadedUrl');
         
-        if (finalVideoUrl.isEmpty) {
+        if (uploadedUrl == null || uploadedUrl.isEmpty) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error al subir el video'),
+              content: Text('Error al subir el video. Intenta nuevamente.'),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
             ),
           );
           setState(() => _isLoading = false);
           return;
         }
+        
+        finalVideoUrl = uploadedUrl;
+        print('Final video URL: $finalVideoUrl');
       }
 
       // Si no hay video ni URL, usar imagen aleatoria
       if (finalVideoUrl.isEmpty) {
         finalVideoUrl = 'https://picsum.photos/400/600?random=${DateTime.now().millisecond}';
+        print('No video selected, using default image: $finalVideoUrl');
       }
 
       // Obtener usuario actual (puede estar null)
@@ -132,6 +139,8 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
         createdAt: DateTime.now(),
         isAnonymous: _isAnonymous,
       );
+
+      print('Creating secret with URL: ${newSecret.videoUrl}');
 
       // Guardar en Firestore usando el provider
       final newSecretId = await ref.read(
