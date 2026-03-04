@@ -48,7 +48,7 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     // Obtener el secreto específico
     final secretAsync = ref.watch(secretByIdProvider(widget.secretId));
     final currentUserAsync = ref.watch(currentUserProvider);
@@ -185,13 +185,13 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
                                   if (isLiked) {
                                     ref.read(
                                       unlikeSecretProvider(
-                                        (secretId, userId),
+                                        (widget.secretId, userId),
                                       ).future,
                                     );
                                   } else {
                                     ref.read(
                                       likeSecretProvider(
-                                        (secretId, userId),
+                                        (widget.secretId, userId),
                                       ).future,
                                     );
                                   }
@@ -284,7 +284,7 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
                       const SizedBox(height: 16),
 
                       // Lista de comentarios
-                      _buildCommentsList(secretId, ref, context),
+                      _buildCommentsList(widget.secretId, ref, context),
                     ],
                   ),
                 ),
