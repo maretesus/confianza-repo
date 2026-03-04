@@ -22,6 +22,7 @@ class SecretDetailScreen extends ConsumerStatefulWidget {
 
 class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
   VideoPlayerController? _videoController;
+  String? _currentVideoUrl;
   
   @override
   void dispose() {
@@ -34,15 +35,33 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
     if (videoUrl.contains('picsum.photos') || 
         videoUrl.endsWith('.jpg') || 
         videoUrl.endsWith('.png')) {
+      // Limpiar el video anterior si existe
+      if (_videoController != null) {
+        _videoController!.dispose();
+        _videoController = null;
+        _currentVideoUrl = null;
+      }
       return;
     }
     
-    if (_videoController == null) {
+    // Si la URL cambió, reinicializar el controller
+    if (_currentVideoUrl != videoUrl) {
+      // Dispose del controller anterior
+      if (_videoController != null) {
+        _videoController!.dispose();
+      }
+      
+      _currentVideoUrl = videoUrl;
+      print('Inicializando video con URL: $videoUrl');
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl))
         ..initialize().then((_) {
-          setState(() {});
+          print('Video inicializado correctamente');
+          if (mounted) {
+            setState(() {});
+          }
         }).catchError((error) {
           print('Error inicializando video: $error');
+          print('URL del video: $videoUrl');
         });
     }
   }
@@ -307,8 +326,9 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
     final isVideo = url.contains('.mp4') ||
         url.contains('.mov') ||
         url.contains('.avi') ||
+        url.contains('videos%2F') || // URL encoded /videos/
         url.contains('videos/') ||
-        url.contains('firebase');
+        url.contains('firebasestorage');
 
     if (isVideo && _videoController != null && _videoController!.value.isInitialized) {
       // Mostrar video player
@@ -341,8 +361,18 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
       );
     } else if (isVideo) {
       // Video inicializándose o error
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Cargando video...',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       );
     } else {
       // Mostrar como imagen
