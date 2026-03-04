@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -113,7 +114,14 @@ class MediaService {
       
       // Obtener los bytes del archivo
       final bytes = await xFile.readAsBytes();
-      print('File size: ${(bytes.length / (1024 * 1024)).toStringAsFixed(2)}MB');
+      final fileSizeMB = bytes.length / (1024 * 1024);
+      print('File size: ${fileSizeMB.toStringAsFixed(2)}MB');
+      
+      // Validar tamaño máximo (20MB para web por estabilidad)
+      if (fileSizeMB > 20) {
+        print('File too large for web: ${fileSizeMB.toStringAsFixed(2)}MB (max 20MB)');
+        return null;
+      }
       
       // Generar un ID único para el archivo
       final String fileId = const Uuid().v4();
@@ -130,13 +138,24 @@ class MediaService {
       );
       
       // Escuchar el progreso
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+      final progressSub = uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        print('Upload progress: ${progress.toStringAsFixed(2)}%');
+        print('Upload progress: ${progress.toStringAsFixed(2)}% (${snapshot.bytesTransferred} / ${snapshot.totalBytes})');
       });
       
-      // Esperar a que se complete la subida
-      final TaskSnapshot snapshot = await uploadTask;
+      // Esperar a que se complete la subida con timeout
+      print('Waiting for upload to complete...');
+      final TaskSnapshot snapshot = await uploadTask.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          print('Upload timeout after 5 minutes');
+          uploadTask.cancel();
+          throw TimeoutException('Video upload timed out', const Duration(minutes: 5));
+        },
+      );
+      
+      progressSub.cancel();
+      
       print('Web upload completed. Snapshot state: ${snapshot.state}');
       
       // Obtener la URL de descarga
@@ -147,9 +166,47 @@ class MediaService {
       _lastPickedFile = null;
       
       return downloadUrl;
+    } on TimeoutException catch (e) {
+      print('Timeout error subiendo video en web: $e');
+      return null;
     } catch (e) {
       print('Error subiendo video en web: $e');
       print('Stack trace: $e');
+      
+      // Intentar con método alternativo si falla
+      if (e.toString().contains('cors') || e.toString().contains('network')) {
+        print('Attempting alternative upload method...');
+        return await _uploadVideoWebAlternative(xFile);
+      }
+      
+      return null;
+    }
+  }
+  
+  /// Método alternativo para subida en web (en caso de fallar la principal)
+  Future<String?> _uploadVideoWebAlternative(XFile xFile) async {
+    try {
+      print('Trying alternative web upload...');
+      
+      final bytes = await xFile.readAsBytes();
+      final String fileId = const Uuid().v4();
+      final String fileName = 'videos/$fileId.mp4';
+      
+      final Reference ref = _storage.refFromURL(
+        'gs://confident-f42af.firebasestorage.app/$fileName'
+      );
+      
+      final UploadTask uploadTask = ref.putData(bytes);
+      
+      final TaskSnapshot snapshot = await uploadTask.timeout(
+        const Duration(minutes: 5),
+      );
+      
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      print('Alternative upload successful: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('Alternative upload also failed: $e');
       return null;
     }
   }
