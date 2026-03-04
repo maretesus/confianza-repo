@@ -11,16 +11,25 @@ class MediaService {
   /// Selecciona un video de la galería
   Future<File?> pickVideoFromGallery() async {
     try {
+      print('pickVideoFromGallery() called');
       final XFile? pickedFile = await _imagePicker.pickVideo(
         source: ImageSource.gallery,
       );
       
+      print('Picked file: ${pickedFile?.path}');
+      print('Picked file name: ${pickedFile?.name}');
+      
       if (pickedFile != null) {
-        return File(pickedFile.path);
+        final file = File(pickedFile.path);
+        print('Created File object: ${file.path}');
+        print('File exists: ${file.existsSync()}');
+        return file;
       }
+      print('No file picked (user cancelled)');
       return null;
     } catch (e) {
       print('Error seleccionando video: $e');
+      print('Stack trace: $e');
       return null;
     }
   }

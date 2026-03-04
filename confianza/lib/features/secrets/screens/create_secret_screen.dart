@@ -48,12 +48,18 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
   }
 
   Future<void> _selectVideo() async {
+    print('_selectVideo() called');
     final File? videoFile = await _mediaService.pickVideoFromGallery();
     
-    if (videoFile == null) return;
+    print('Video file selected: ${videoFile?.path}');
+    if (videoFile == null) {
+      print('Video file is null, returning');
+      return;
+    }
 
     // Validar tamaño del video
     if (!MediaService.isVideoSizeValid(videoFile)) {
+      print('Video size validation failed');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -64,15 +70,22 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
       return;
     }
 
+    print('Video validated, setting state with file: ${videoFile.path}');
     setState(() {
       _selectedVideoFile = videoFile;
     });
+    print('State updated, _selectedVideoFile is now: ${_selectedVideoFile?.path}');
   }
 
   Future<void> _handleCreateSecret() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    print('=== _handleCreateSecret() started ===');
+    print('_selectedVideoFile: ${_selectedVideoFile?.path}');
+    print('_videoUrl: $_videoUrl');
+    print('_videoUrlController.text: ${_videoUrlController.text}');
 
     setState(() => _isLoading = true);
 
