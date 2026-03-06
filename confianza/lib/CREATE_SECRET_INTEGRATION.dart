@@ -1,6 +1,7 @@
 /// Ejemplo de cómo integrar CreateSecretScreen en tu app
 /// 
 /// Este archivo muestra las diferentes formas de acceder a la pantalla de crear secretos
+library;
 
 import 'package:flutter/material.dart';
 import 'features/secrets/screens/create_secret_screen.dart';
@@ -77,7 +78,7 @@ void navigateToCreateSecret(BuildContext context) {
 /*
 1. El usuario abre CreateSecretScreen
 2. Llena el formulario (título, descripción, categoría, etc.)
-3. Presiona "Guardar en la nube"
+3. Presiona "Publicar"
 4. Se obtiene el usuario actual (currentUserProvider)
 5. Se crea un objeto Secret con los datos
 6. Se llama a createSecretProvider(secret).future
@@ -94,7 +95,7 @@ El SecretService ya maneja todo en la nube:
 // ============== EJEMPLO: HomeScreen CON BOTÓN ==============
 
 class HomeScreenExample extends StatelessWidget {
-  const HomeScreenExample({Key? key}) : super(key: key);
+  const HomeScreenExample({super.key});
 
   @override
   Widget build(BuildContext context) {

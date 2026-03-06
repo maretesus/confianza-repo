@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 import '../models/secret.dart';
@@ -8,7 +9,7 @@ import '../../auth/providers/auth_providers.dart';
 
 /// Pantalla para crear un nuevo secreto
 class CreateSecretScreen extends ConsumerStatefulWidget {
-  const CreateSecretScreen({Key? key}) : super(key: key);
+  const CreateSecretScreen({super.key});
 
   @override
   ConsumerState<CreateSecretScreen> createState() => _CreateSecretScreenState();
@@ -58,8 +59,18 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
     }
 
     // Validar tamaño del video
-    if (!MediaService.isVideoSizeValid(videoFile)) {
-      print('Video size validation failed');
+    // En web, obtener el tamaño real del archivo
+    double? actualSizeMB;
+    if (kIsWeb) {
+      actualSizeMB = await _mediaService.getLastPickedFileSizeMB();
+      print('Web video size (actual): ${actualSizeMB?.toStringAsFixed(2)}MB');
+    } else {
+      actualSizeMB = MediaService.getVideoSizeMB(videoFile);
+      print('Mobile/Desktop video size: ${actualSizeMB.toStringAsFixed(2)}MB');
+    }
+
+    if (actualSizeMB == null || actualSizeMB > 100) {
+      print('Video size validation failed: ${actualSizeMB}MB');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -98,7 +109,7 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Subiendo video... esto puede tomar algunos segundos'),
+            content: Text('📤 Subiendo video... (esto puede tomar 1-2 minutos)'),
             duration: Duration(seconds: 30),
           ),
         );
@@ -110,9 +121,9 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error al subir el video. Intenta nuevamente.'),
+              content: Text('❌ Error al subir el video. Verifica: 1) Conexión a internet 2) Tamaño del video (máx 20MB en web) 3) Firebase Storage Rules configuradas'),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 5),
+              duration: Duration(seconds: 8),
             ),
           );
           setState(() => _isLoading = false);
@@ -289,7 +300,7 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
 
               // Categoría
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Categoría *',
                   border: OutlineInputBorder(
@@ -488,7 +499,7 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
                         )
                       : const Icon(Icons.cloud_upload),
                   label: Text(
-                    _isLoading ? 'Guardando...' : 'Guardar en la nube',
+                    _isLoading ? 'Publicando...' : 'Publicar',
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),

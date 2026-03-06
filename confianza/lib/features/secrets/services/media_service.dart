@@ -11,6 +11,12 @@ class MediaService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   
   XFile? _lastPickedFile; // Guardar el XFile para web
+  
+  // Configuración de subida
+  static const int MAX_RETRIES = 3;
+  static const Duration UPLOAD_TIMEOUT = Duration(minutes: 2);
+  static const double WEB_MAX_SIZE_MB = 20;
+  static const double MOBILE_MAX_SIZE_MB = 100;
 
   /// Selecciona un video de la galería
   /// En web, retorna un marcador especial; en mobile/desktop, retorna el File
@@ -51,60 +57,119 @@ class MediaService {
     }
   }
 
+  /// Obtiene el tamaño real del último archivo seleccionado (útil en web)
+  Future<double?> getLastPickedFileSizeMB() async {
+    if (_lastPickedFile == null) return null;
+    return await getXFileSizeMB(_lastPickedFile!);
+  }
+
   /// Sube un video a Firebase Storage y retorna la URL
+  /// Incluye reintentos automáticos si falla
   Future<String?> uploadVideo(File videoFile) async {
     try {
-      print('Starting video upload: ${videoFile.path}');
+      print('=== Starting video upload ===');
+      print('Video file path: ${videoFile.path}');
       
       // Detectar si es web
       if (kIsWeb && _lastPickedFile != null) {
-        print('Running on web, uploading XFile');
-        return await _uploadVideoWeb(_lastPickedFile!);
+        print('Platform: Web');
+        return await _uploadVideoWebWithRetry(_lastPickedFile!);
       }
       
       // Mobile/Desktop: trabajar con File
+      print('Platform: Mobile/Desktop');
       print('File size: ${getVideoSizeMB(videoFile).toStringAsFixed(2)}MB');
       
       // Validar que el archivo existe
       if (!videoFile.existsSync()) {
-        print('Video file does not exist: ${videoFile.path}');
+        print('❌ Video file does not exist: ${videoFile.path}');
         return null;
       }
       
-      // Generar un ID único para el archivo
-      final String fileId = const Uuid().v4();
-      final String fileName = 'videos/$fileId.mp4';
-      print('Uploading to Firebase Storage: $fileName');
-      
-      // Subir archivo
-      final Reference ref = _storage.ref().child(fileName);
-      final UploadTask uploadTask = ref.putFile(
-        videoFile,
-        SettableMetadata(
-          contentType: 'video/mp4',
-        ),
-      );
-      
-      // Escuchar el progreso
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        print('Upload progress: ${progress.toStringAsFixed(2)}%');
-      });
-      
-      // Esperar a que se complete la subida
-      final TaskSnapshot snapshot = await uploadTask;
-      print('Upload completed. Snapshot state: ${snapshot.state}');
-      
-      // Obtener la URL de descarga
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
-      print('Video uploaded successfully: $downloadUrl');
-      
-      return downloadUrl;
+      return await _uploadVideoMobileWithRetry(videoFile);
     } catch (e) {
-      print('Error subiendo video: $e');
-      print('Stack trace: $e');
+      print('❌ Fatal error in uploadVideo: $e');
       return null;
     }
+  }
+  
+  /// Intenta subir el video varias veces en caso de fallo (Mobile/Desktop)
+  Future<String?> _uploadVideoMobileWithRetry(File videoFile) async {
+    for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        print('📤 Upload attempt $attempt/$MAX_RETRIES');
+        
+        // Generar un ID único para el archivo
+        final String fileId = const Uuid().v4();
+        final String fileName = 'videos/$fileId.mp4';
+        print('Uploading to Firebase Storage: $fileName');
+        
+        // Subir archivo
+        final Reference ref = _storage.ref().child(fileName);
+        final UploadTask uploadTask = ref.putFile(
+          videoFile,
+          SettableMetadata(
+            contentType: 'video/mp4',
+          ),
+        );
+        
+        // Escuchar el progreso
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          print('  Progress: ${progress.toStringAsFixed(1)}% (${(snapshot.bytesTransferred / 1024 / 1024).toStringAsFixed(2)}MB / ${(snapshot.totalBytes / 1024 / 1024).toStringAsFixed(2)}MB)');
+        });
+        
+        // Esperar a que se complete con timeout
+        print('⏱️ Waiting for upload to complete (timeout: ${UPLOAD_TIMEOUT.inSeconds}s)...');
+        final TaskSnapshot snapshot = await uploadTask.timeout(
+          UPLOAD_TIMEOUT,
+          onTimeout: () {
+            print('⏰ Upload timeout - cancelling...');
+            uploadTask.cancel();
+            throw TimeoutException('Upload timed out after ${UPLOAD_TIMEOUT.inSeconds}s', UPLOAD_TIMEOUT);
+          },
+        );
+        
+        print('✅ Upload completed. Snapshot state: ${snapshot.state}');
+        
+        // Obtener la URL de descarga
+        final String downloadUrl = await snapshot.ref.getDownloadURL();
+        print('✅ Video uploaded successfully!');
+        print('   URL: $downloadUrl');
+        return downloadUrl;
+        
+      } on TimeoutException {
+        print('⏰ Attempt $attempt failed: timeout');
+        if (attempt < MAX_RETRIES) {
+          print('🔄 Retrying in 3 seconds...');
+          await Future.delayed(Duration(seconds: 3));
+        }
+      } catch (e) {
+        print('⚠️ Attempt $attempt failed: $e');
+        if (attempt < MAX_RETRIES) {
+          print('🔄 Retrying in 3 seconds...');
+          await Future.delayed(Duration(seconds: 3));
+        }
+      }
+    }
+    return null;
+  }
+  
+  /// Intenta subir el video varias veces en caso de fallo (Web)
+  Future<String?> _uploadVideoWebWithRetry(XFile xFile) async {
+    for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        print('📤 Web upload attempt $attempt/$MAX_RETRIES');
+        return await _uploadVideoWeb(xFile);
+      } catch (e) {
+        print('⚠️ Attempt $attempt failed: $e');
+        if (attempt < MAX_RETRIES) {
+          print('🔄 Retrying in 3 seconds...');
+          await Future.delayed(Duration(seconds: 3));
+        }
+      }
+    }
+    return null;
   }
   
   /// Sube un video desde web (XFile)
@@ -118,9 +183,9 @@ class MediaService {
       print('File size: ${fileSizeMB.toStringAsFixed(2)}MB');
       
       // Validar tamaño máximo (20MB para web por estabilidad)
-      if (fileSizeMB > 20) {
-        print('File too large for web: ${fileSizeMB.toStringAsFixed(2)}MB (max 20MB)');
-        return null;
+      if (fileSizeMB > WEB_MAX_SIZE_MB) {
+        print('❌ File too large for web: ${fileSizeMB.toStringAsFixed(2)}MB (max ${WEB_MAX_SIZE_MB}MB)');
+        throw Exception('Video too large for web (max ${WEB_MAX_SIZE_MB}MB)');
       }
       
       // Generar un ID único para el archivo
@@ -140,74 +205,36 @@ class MediaService {
       // Escuchar el progreso
       final progressSub = uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        print('Upload progress: ${progress.toStringAsFixed(2)}% (${snapshot.bytesTransferred} / ${snapshot.totalBytes})');
+        print('  Progress: ${progress.toStringAsFixed(1)}% (${(snapshot.bytesTransferred / 1024 / 1024).toStringAsFixed(2)}MB / ${(snapshot.totalBytes / 1024 / 1024).toStringAsFixed(2)}MB)');
       });
       
       // Esperar a que se complete la subida con timeout
-      print('Waiting for upload to complete...');
+      print('⏱️ Waiting for upload to complete (timeout: ${UPLOAD_TIMEOUT.inSeconds}s)...');
       final TaskSnapshot snapshot = await uploadTask.timeout(
-        const Duration(minutes: 5),
+        UPLOAD_TIMEOUT,
         onTimeout: () {
-          print('Upload timeout after 5 minutes');
+          print('⏰ Upload timeout - cancelling...');
           uploadTask.cancel();
-          throw TimeoutException('Video upload timed out', const Duration(minutes: 5));
+          throw TimeoutException('Upload timed out', UPLOAD_TIMEOUT);
         },
       );
       
       progressSub.cancel();
       
-      print('Web upload completed. Snapshot state: ${snapshot.state}');
+      print('✅ Upload completed. Snapshot state: ${snapshot.state}');
       
       // Obtener la URL de descarga
       final String downloadUrl = await snapshot.ref.getDownloadURL();
-      print('Web video uploaded successfully: $downloadUrl');
+      print('✅ Web video uploaded successfully!');
+      print('   URL: $downloadUrl');
       
       // Limpiar
       _lastPickedFile = null;
       
       return downloadUrl;
-    } on TimeoutException catch (e) {
-      print('Timeout error subiendo video en web: $e');
-      return null;
     } catch (e) {
-      print('Error subiendo video en web: $e');
-      print('Stack trace: $e');
-      
-      // Intentar con método alternativo si falla
-      if (e.toString().contains('cors') || e.toString().contains('network')) {
-        print('Attempting alternative upload method...');
-        return await _uploadVideoWebAlternative(xFile);
-      }
-      
-      return null;
-    }
-  }
-  
-  /// Método alternativo para subida en web (en caso de fallar la principal)
-  Future<String?> _uploadVideoWebAlternative(XFile xFile) async {
-    try {
-      print('Trying alternative web upload...');
-      
-      final bytes = await xFile.readAsBytes();
-      final String fileId = const Uuid().v4();
-      final String fileName = 'videos/$fileId.mp4';
-      
-      final Reference ref = _storage.refFromURL(
-        'gs://confident-f42af.firebasestorage.app/$fileName'
-      );
-      
-      final UploadTask uploadTask = ref.putData(bytes);
-      
-      final TaskSnapshot snapshot = await uploadTask.timeout(
-        const Duration(minutes: 5),
-      );
-      
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
-      print('Alternative upload successful: $downloadUrl');
-      return downloadUrl;
-    } catch (e) {
-      print('Alternative upload also failed: $e');
-      return null;
+      print('❌ Error subiendo video en web: $e');
+      rethrow;
     }
   }
 
@@ -227,9 +254,18 @@ class MediaService {
     return videoFile.lengthSync() / (1024 * 1024);
   }
 
-  /// Valida que el video no sea muy grande (máximo 100MB)
-  static bool isVideoSizeValid(File videoFile, {double maxSizeMB = 100}) {
-    final sizeMB = getVideoSizeMB(videoFile);
-    return sizeMB <= maxSizeMB;
+  /// Obtiene el tamaño real del XFile en web (en MB)
+  static Future<double> getXFileSizeMB(XFile xFile) async {
+    final bytes = await xFile.readAsBytes();
+    return bytes.length / (1024 * 1024);
+  }
+
+  /// Valida que el video no sea muy grande
+  static Future<bool> isVideoSizeValidAsync(XFile? xFile) async {
+    if (xFile == null) return true;
+    
+    final sizeMB = await getXFileSizeMB(xFile);
+    final maxSize = kIsWeb ? WEB_MAX_SIZE_MB : MOBILE_MAX_SIZE_MB;
+    return sizeMB <= maxSize;
   }
 }
