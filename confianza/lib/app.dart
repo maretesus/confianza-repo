@@ -14,11 +14,14 @@ class ConfidentApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Inicializar ID anónimo del usuario
     final anonymousId = ref.watch(anonymousUserIdProvider);
-    
+
     // Una vez que se carga el ID anónimo, guardarlo en el provider sincrónico
     anonymousId.whenData((id) {
       ref.read(anonymousUserIdSyncProvider.notifier).state = id;
     });
+
+    // Obtener el router con la lógica de redirección
+    final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
       // Configuración básica
@@ -26,7 +29,7 @@ class ConfidentApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
 
       // Router configuration (go_router)
-      routerConfig: appRouter,
+      routerConfig: router,
 
       // Temas
       theme: AppTheme.lightTheme,
