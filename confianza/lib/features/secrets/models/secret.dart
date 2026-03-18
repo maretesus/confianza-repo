@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Secret {
   final String id;
   final String? userId; // Nullable para permitir secretos anónimos sin login
-  final String videoUrl;
+  final String? videoUrl; // Nullable - solo se guarda si hay video
+  final String? videoId; // ID único del video en Storage
   final String title;
   final String? description;
   final String category;
@@ -17,7 +18,8 @@ class Secret {
   const Secret({
     required this.id,
     this.userId,
-    required this.videoUrl,
+    this.videoUrl,
+    this.videoId,
     required this.title,
     this.description,
     required this.category,
@@ -33,6 +35,7 @@ class Secret {
     String? id,
     String? userId,
     String? videoUrl,
+    String? videoId,
     String? title,
     String? description,
     String? category,
@@ -46,6 +49,7 @@ class Secret {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       videoUrl: videoUrl ?? this.videoUrl,
+      videoId: videoId ?? this.videoId,
       title: title ?? this.title,
       description: description ?? this.description,
       category: category ?? this.category,
@@ -62,6 +66,7 @@ class Secret {
     return {
       'userId': userId,
       'videoUrl': videoUrl,
+      'videoId': videoId,
       'title': title,
       'description': description,
       'category': category,
@@ -99,7 +104,8 @@ class Secret {
     return Secret(
       id: id,
       userId: map['userId'] as String?,
-      videoUrl: map['videoUrl'] as String,
+      videoUrl: map['videoUrl'] as String?, // Ahora nullable
+      videoId: map['videoId'] as String?,
       title: map['title'] as String,
       description: map['description'] as String?,
       category: map['category'] as String,

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
-import '../models/secret.dart';
 import '../models/comment.dart';
 import '../providers/secrets_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/anonymous_user_provider.dart';
+import '../widgets/report_dialog.dart';
 
 /// Pantalla que muestra el detalle de un secreto
 class SecretDetailScreen extends ConsumerStatefulWidget {
@@ -88,7 +88,9 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
           }
 
           // Inicializar video si es necesario
-          _initializeVideo(secret.videoUrl);
+          if (secret.videoUrl != null) {
+            _initializeVideo(secret.videoUrl!);
+          }
 
           final currentUser = currentUserAsync.maybeWhen(
             data: (user) => user,
@@ -114,7 +116,9 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
                   width: double.infinity,
                   height: 300,
                   color: Colors.grey[300],
-                  child: _buildMediaWidget(secret.videoUrl),
+                  child: secret.videoUrl != null 
+                      ? _buildMediaWidget(secret.videoUrl!)
+                      : _buildEmptyMediaWidget(),
                 ),
 
                 // Contenido del secreto
@@ -285,6 +289,28 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
                       ),
                       const SizedBox(height: 24),
 
+                      // Botón de reportar
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => ReportDialog(
+                                secretId: widget.secretId,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.flag_outlined),
+                          label: const Text('Reportar'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       // Fecha de creación
                       Text(
                         'Publicado: ${_formatDate(secret.createdAt)}',
@@ -391,6 +417,31 @@ class _SecretDetailScreenState extends ConsumerState<SecretDetailScreen> {
             const Icon(Icons.broken_image),
       );
     }
+  }
+
+  /// Construye un widget placeholder cuando no hay video/imagen
+  Widget _buildEmptyMediaWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Sin contenido multimedia',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {

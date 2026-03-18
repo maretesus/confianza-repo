@@ -11,6 +11,7 @@ class MediaService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   
   XFile? _lastPickedFile; // Guardar el XFile para web
+  String? _lastVideoId; // Guardar el ID del último video subido
   
   // Configuración de subida
   static const int MAX_RETRIES = 3;
@@ -63,6 +64,11 @@ class MediaService {
     return await getXFileSizeMB(_lastPickedFile!);
   }
 
+  /// Obtiene el ID del último video subido
+  String? getLastVideoId() {
+    return _lastVideoId;
+  }
+
   /// Sube un video a Firebase Storage y retorna la URL
   /// Incluye reintentos automáticos si falla
   Future<String?> uploadVideo(File videoFile) async {
@@ -101,8 +107,10 @@ class MediaService {
         
         // Generar un ID único para el archivo
         final String fileId = const Uuid().v4();
+        _lastVideoId = fileId; // Guardar el ID para acceso posterior
         final String fileName = 'videos/$fileId.mp4';
         print('Uploading to Firebase Storage: $fileName');
+        print('   Video ID: $fileId');
         
         // Subir archivo
         final Reference ref = _storage.ref().child(fileName);
@@ -190,8 +198,10 @@ class MediaService {
       
       // Generar un ID único para el archivo
       final String fileId = const Uuid().v4();
+      _lastVideoId = fileId; // Guardar el ID para acceso posterior
       final String fileName = 'videos/$fileId.mp4';
       print('Uploading to Firebase Storage: $fileName');
+      print('   Video ID: $fileId');
       
       // Subir archivo
       final Reference ref = _storage.ref().child(fileName);

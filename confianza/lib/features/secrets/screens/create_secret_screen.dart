@@ -103,6 +103,7 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
     try {
       // Subir video si hay uno seleccionado
       String finalVideoUrl = _videoUrl ?? _videoUrlController.text;
+      String? videoId;
       
       if (_selectedVideoFile != null && finalVideoUrl.isEmpty) {
         print('Selected video file found, uploading...');
@@ -131,28 +132,36 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
         }
         
         finalVideoUrl = uploadedUrl;
+        videoId = _mediaService.getLastVideoId(); // Obtener el ID del video
         print('Final video URL: $finalVideoUrl');
+        print('Video ID: $videoId');
       }
 
-      // Si no hay video ni URL, usar imagen aleatoria
+      // Si no hay video ni URL, dejar como null (no guardar imagen)
       if (finalVideoUrl.isEmpty) {
-        finalVideoUrl = 'https://picsum.photos/400/600?random=${DateTime.now().millisecond}';
-        print('No video selected, using default image: $finalVideoUrl');
+        finalVideoUrl = ''; // Será null al guardar
+        print('No video selected, videoUrl será null');
       }
 
-      // Obtener usuario actual (puede estar null)
+      // Obtener usuario actual (puede estar null - es OK, permitimos anónimos)
       final currentUserAsync = ref.read(currentUserProvider);
       final currentUser = currentUserAsync.maybeWhen(
         data: (user) => user,
         orElse: () => null,
       );
 
+      print('🔐 Auth Debug:');
+      print('   currentUser: $currentUser');
+      print('   currentUser?.uid: ${currentUser?.uid}');
+      print('   (Anónimo permitido - userId puede ser null)');
+
       // Crear objeto Secret
-      // Si no hay usuario autenticado, userId será null (completamente anónimo)
+      // userId será null para secretos completamente anónimos (PERMITIDO)
       final newSecret = Secret(
         id: '', // Firestore generará el ID
-        userId: currentUser?.uid, // Null si no está autenticado
-        videoUrl: finalVideoUrl,
+        userId: currentUser?.uid, // Null está permitido ahora
+        videoUrl: finalVideoUrl.isEmpty ? null : finalVideoUrl,
+        videoId: videoId,
         title: _titleController.text,
         description: _descriptionController.text.isEmpty
             ? null
@@ -165,6 +174,9 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
       );
 
       print('Creating secret with URL: ${newSecret.videoUrl}');
+      print('Creating secret with videoId: ${newSecret.videoId}');
+      print('   Secret.userId: ${newSecret.userId} (null = anónimo)');
+      print('   Secret.isAnonymous: ${newSecret.isAnonymous}');
 
       // Guardar en Firestore usando el provider
       final newSecretId = await ref.read(

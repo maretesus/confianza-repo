@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Environment variables (nunca commitees estos archivos)
+.env
+.env.local
+.env.*.local
+
+# Firebase
+.firebase/
+firebase-debug.log*
+.runtimeconfig.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

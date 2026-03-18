@@ -69,10 +69,18 @@ class SecretService {
     try {
       // Asegurar que likedByUserIds está inicializado
       final secretToSave = secret.copyWith(likedByUserIds: []);
+      
+      print('📝 Saving secret to Firestore:');
+      print('   Data: ${secretToSave.toMap()}');
+      print('   Keys: ${secretToSave.toMap().keys.toList()}');
+      
       final docRef = await _secretsCollection.add(secretToSave.toMap());
+      
+      print('✅ Secret created with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('Error creando secreto: $e');
+      print('❌ Error creando secreto: $e');
+      print('   Stack trace: $e');
       return null;
     }
   }

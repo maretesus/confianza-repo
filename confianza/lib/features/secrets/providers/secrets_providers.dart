@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/secret.dart';
 import '../models/comment.dart';
+import '../models/report.dart';
 import '../services/secret_service.dart';
-import '../../auth/providers/auth_providers.dart';
+import '../services/report_service.dart';
 
 // ==================== PROVIDERS DE SERVICIOS ====================
 
@@ -65,10 +66,11 @@ final likeSecretProvider = FutureProvider.autoDispose.family<void, (String, Stri
   (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.likeSecret(params.$1, params.$2);
-    // Refrescar el secreto para que se actualice el UI
-    ref.refresh(secretByIdProvider(params.$1));
-    // Refrescar todos los secretos en el feed
-    ref.refresh(secretsProvider);
+    // Refrescar el secreto para que se actualice el UI (sin esperar)
+    // ignore: unused_result
+    ref.refresh(secretByIdProvider(params.$1).future);
+    // ignore: unused_result
+    ref.refresh(secretsProvider.future);
   },
 );
 
@@ -78,10 +80,11 @@ final unlikeSecretProvider = FutureProvider.autoDispose.family<void, (String, St
   (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.unlikeSecret(params.$1, params.$2);
-    // Refrescar el secreto para que se actualice el UI
-    ref.refresh(secretByIdProvider(params.$1));
-    // Refrescar todos los secretos en el feed
-    ref.refresh(secretsProvider);
+    // Refrescar el secreto para que se actualice el UI (sin esperar)
+    // ignore: unused_result
+    ref.refresh(secretByIdProvider(params.$1).future);
+    // ignore: unused_result
+    ref.refresh(secretsProvider.future);
   },
 );
 
@@ -90,10 +93,12 @@ final createSecretProvider = FutureProvider.autoDispose.family<String?, Secret>(
   (ref, secret) async {
     final secretService = ref.read(secretServiceProvider);
     final newSecretId = await secretService.createSecret(secret);
-    // Refrescar los providers de secretos para que se actualicen inmediatamente
+    // Refrescar los providers de secretos para que se actualicen inmediatamente (sin esperar)
     if (newSecretId != null) {
-      ref.refresh(secretsProvider);
-      ref.refresh(filteredSecretsProvider);
+      // ignore: unused_result
+      ref.refresh(secretsProvider.future);
+      // ignore: unused_result
+      ref.refresh(filteredSecretsProvider.future);
     }
     return newSecretId;
   },
@@ -167,8 +172,40 @@ final addCommentProvider = FutureProvider.autoDispose.family<void, (String, Comm
   (ref, params) async {
     final secretService = ref.read(secretServiceProvider);
     await secretService.addComment(params.$1, params.$2);
-    // Refrescar comentarios del secreto
-    ref.refresh(commentsProvider(params.$1));
+    // Refrescar comentarios del secreto (sin esperar)
+    // ignore: unused_result
+    ref.refresh(commentsProvider(params.$1).future);
+  },
+);
+
+// ==================== PROVIDERS DE REPORTES ====================
+
+/// Provider del servicio de reportes
+final reportServiceProvider = Provider<ReportService>((ref) {
+  return ReportService();
+});
+
+/// Provider para crear un nuevo reporte
+final createReportProvider = FutureProvider.autoDispose
+    .family<String, (String, String, String, String?, String?)>(
+  (ref, params) async {
+    final reportService = ref.read(reportServiceProvider);
+    final (secretId, email, reason, description, secretText) = params;
+    return await reportService.createReport(
+      secretId: secretId,
+      email: email,
+      reason: reason,
+      description: description,
+      secretText: secretText,
+    );
+  },
+);
+
+/// Provider Stream que obtiene reportes de un secreto específico
+final reportsProvider = StreamProvider.autoDispose.family<List<Report>, String>(
+  (ref, secretId) {
+    final reportService = ref.watch(reportServiceProvider);
+    return reportService.watchReportsBySecretId(secretId);
   },
 );
 

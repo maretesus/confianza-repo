@@ -1,16 +1,16 @@
 /// Ejemplo de cómo usar AuthProviders en la UI
 /// 
 /// Este archivo muestra patrones comunes para usar autenticación en Flutter
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/providers/auth_providers.dart';
-import 'features/auth/models/user.dart';
 
 /// ============== EJEMPLO 1: Verificar si usuario está autenticado ==============
 
 class AuthGuardExample extends ConsumerWidget {
-  const AuthGuardExample({Key? key}) : super(key: key);
+  const AuthGuardExample({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,7 +40,7 @@ class AuthGuardExample extends ConsumerWidget {
 /// ============== EJEMPLO 2: Pantalla de Login ==============
 
 class LoginScreenExample extends ConsumerStatefulWidget {
-  const LoginScreenExample({Key? key}) : super(key: key);
+  const LoginScreenExample({super.key});
 
   @override
   ConsumerState<LoginScreenExample> createState() =>
@@ -180,7 +180,7 @@ class _LoginScreenExampleState extends ConsumerState<LoginScreenExample> {
 /// ============== EJEMPLO 3: Página Principal con Usuario ==============
 
 class HomeScreenExample extends ConsumerWidget {
-  const HomeScreenExample({Key? key}) : super(key: key);
+  const HomeScreenExample({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

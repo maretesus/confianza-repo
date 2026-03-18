@@ -12,13 +12,16 @@ class ConfidentApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Inicializar ID anónimo del usuario
-    final anonymousId = ref.watch(anonymousUserIdProvider);
-
-    // Una vez que se carga el ID anónimo, guardarlo en el provider sincrónico
-    anonymousId.whenData((id) {
-      ref.read(anonymousUserIdSyncProvider.notifier).state = id;
-    });
+    // Escuchar cambios en el ID anónimo y guardarlo en el provider sincrónico
+    // Usar ref.listen() es la forma correcta en Riverpod para hacer esto
+    ref.listen(
+      anonymousUserIdProvider,
+      (previous, next) {
+        next.whenData((id) {
+          ref.read(anonymousUserIdSyncProvider.notifier).state = id;
+        });
+      },
+    );
 
     // Obtener el router con la lógica de redirección
     final router = ref.watch(appRouterProvider);

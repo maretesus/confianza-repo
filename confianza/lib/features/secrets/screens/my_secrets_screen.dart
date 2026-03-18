@@ -9,7 +9,7 @@ import 'edit_secret_screen.dart';
 
 /// Pantalla que muestra los secretos del usuario actual
 class MySecretsScreen extends ConsumerWidget {
-  const MySecretsScreen({Key? key}) : super(key: key);
+  const MySecretsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -140,13 +140,24 @@ class _MySecretCard extends ConsumerWidget {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
-                  image: DecorationImage(
-                    image: NetworkImage(secret.videoUrl),
-                    fit: BoxFit.cover,
-                  ),
+                  image: secret.videoUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(secret.videoUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
                 child: Stack(
                   children: [
+                    // Si no hay videoUrl, mostrar placeholder
+                    if (secret.videoUrl == null)
+                      Center(
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
                     // Overlay oscuro
                     Container(
                       color: Colors.black.withOpacity(0.3),

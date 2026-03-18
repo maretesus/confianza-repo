@@ -8,9 +8,9 @@ class EditSecretScreen extends ConsumerStatefulWidget {
   final Secret secret;
 
   const EditSecretScreen({
-    Key? key,
+    super.key,
     required this.secret,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<EditSecretScreen> createState() => _EditSecretScreenState();
@@ -45,7 +45,7 @@ class _EditSecretScreenState extends ConsumerState<EditSecretScreen> {
       text: widget.secret.description ?? '',
     );
     _videoUrlController = TextEditingController(
-      text: widget.secret.videoUrl,
+      text: widget.secret.videoUrl ?? '',
     );
     _selectedCategory = widget.secret.category;
     _isAnonymous = widget.secret.isAnonymous;
@@ -185,7 +185,7 @@ class _EditSecretScreenState extends ConsumerState<EditSecretScreen> {
 
               // Categoría
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Categoría *',
                   border: OutlineInputBorder(
