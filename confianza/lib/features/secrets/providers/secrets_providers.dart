@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/secret.dart';
 import '../models/comment.dart';
 import '../services/secret_service.dart';
-import '../../auth/providers/auth_providers.dart';
 
 // ==================== PROVIDERS DE SERVICIOS ====================
 

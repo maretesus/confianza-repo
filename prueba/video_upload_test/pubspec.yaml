@@ -1,0 +1,24 @@
+name: video_upload_test
+description: App mínima para testear subida de videos a Firebase
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Solo lo esencial para Firebase
+  firebase_core: ^2.28.0
+  firebase_storage: ^11.7.0
+  
+  # Para seleccionar video
+  image_picker: ^1.1.2
+  
+  # Para generar IDs únicos
+  uuid: ^4.5.3
+
+flutter:
+  uses-material-design: true

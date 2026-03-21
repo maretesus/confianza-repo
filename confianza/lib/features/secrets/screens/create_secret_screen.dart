@@ -224,7 +224,7 @@ class _CreateSecretScreenState extends ConsumerState<CreateSecretScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Compartir un Secreto'),
+        title: const Text('Grabar Video'),
         elevation: 0,
       ),
       body: SingleChildScrollView(

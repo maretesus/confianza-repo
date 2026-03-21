@@ -3,59 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/secrets/screens/feed_screen.dart';
 import '../features/secrets/screens/create_secret_screen.dart';
-import '../features/secrets/screens/my_secrets_screen.dart';
-import '../features/secrets/screens/secret_detail_screen.dart';
-import '../features/onboarding/screens/age_verification_screen.dart';
-import '../features/onboarding/providers/age_verification_provider.dart';
+import '../features/secrets/screens/record_screen.dart';
 
 /// Provider para el router con lógica de redirección
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
-    redirect: (context, state) async {
-      // Si el usuario está en la pantalla de verificación de edad, no hacer redirect
-      if (state.matchedLocation == '/age-verification') {
-        return null;
-      }
-
-      // Verificar si el usuario completó la verificación de edad
-      final hasVerified = await ref.watch(hasCompletedAgeVerificationProvider.future);
-
-      // Si no verificó edad y no está en la pantalla de verificación, redirigir
-      if (!hasVerified) {
-        return '/age-verification';
-      }
-
-      return null;
-    },
     routes: [
-      GoRoute(
-        path: '/age-verification',
-        name: 'age-verification',
-        builder: (context, state) => const AgeVerificationScreen(),
-      ),
       GoRoute(
         path: '/',
         name: 'feed',
         builder: (context, state) => const FeedScreen(),
       ),
       GoRoute(
-        path: '/create-secret',
-        name: 'create-secret',
-        builder: (context, state) => const CreateSecretScreen(),
-      ),
-      GoRoute(
-        path: '/my-secrets',
-        name: 'my-secrets',
-        builder: (context, state) => const MySecretsScreen(),
-      ),
-      GoRoute(
-        path: '/secret/:id',
-        name: 'secret-detail',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return SecretDetailScreen(secretId: id);
-        },
+        path: '/record',
+        name: 'record',
+        builder: (context, state) => const RecordScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

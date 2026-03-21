@@ -9,7 +9,7 @@ import 'edit_secret_screen.dart';
 
 /// Pantalla que muestra los secretos del usuario actual
 class MySecretsScreen extends ConsumerWidget {
-  const MySecretsScreen({Key? key}) : super(key: key);
+  const MySecretsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
